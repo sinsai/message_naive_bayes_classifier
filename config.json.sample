@@ -1,0 +1,6 @@
+{
+	"dbuser": "user",
+	"dbpass": "passwd",
+	"dbhost": "server",
+	"db":	  "ushahidi"
+}
