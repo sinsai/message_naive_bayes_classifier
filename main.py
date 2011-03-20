@@ -10,6 +10,23 @@ import cPickle as pickle
 
 mecab_path = "/usr/lib/libmecab.so.1"
 
+"""
+    ナイーブベイズ分類器(showyou)
+　　
+    使い方
+    一回目
+     s.main()
+    二回目
+     s.main2()
+ 
+    main : 学習->バッチテストと一連の処理を行います
+    init_session : DBのセッションを作ります
+    learn : 学習します
+    write_probdist : 学習結果を保存します
+    read_probdist : 学習結果を読み込みます
+    batch_test : 一連のデータ群に対し、一括で分類処理を行います
+    prob_classify(string) : 入力文章を判別します
+"""
 class ShNaiveBayes(object):
     def __init__(self):
         self.all_words = set()
@@ -76,7 +93,7 @@ class ShNaiveBayes(object):
         bows = []
         # まず正解データを読み込む
         correct_query = self.dbSession.query(model.Message).filter(\
-            model.Message.message_type==1).limit(1000)
+            model.Message.message_type!=3).limit(1000)
         self.append_bows(correct_query, tmp_bows,"True")
 
         wrong_query = self.dbSession.query(model.Message).filter(\
@@ -88,17 +105,29 @@ class ShNaiveBayes(object):
         print "end learn"
 
     def batch_test(self):
-        test_bows = []
-        tmp_bows = []
-        test_query = self.dbSession.query(model.Message).filter(\
-            model.Message.message_type==1).slice(2000, 2100)
-        test_sentences = self.append_bows(test_query, tmp_bows)
+
+        j = 65101
+        while j < 90000:
+            test_bows = []
+            tmp_bows = []
+            #test_query = self.dbSession.query(model.Message).filter(\
+            #    model.Message.message_type==1).slice(2000,5000)
+            test_query = self.dbSession.query(model.Message).slice(j,j+100)
+            test_sentences = self.append_bows(test_query, tmp_bows)
         
-        test_bows = self.complete_bows(tmp_bows, test = True)
-        #print test_bows
-        pdists = self.classifier.batch_prob_classify(test_bows)
-        for i in xrange(len(pdists)):
-            print "%s : %.4f" % (test_sentences[i] ,pdists[i].prob("True"))
+            test_bows = self.complete_bows(tmp_bows, test = True)
+            #print test_bows
+            pdists = self.classifier.batch_prob_classify(test_bows)
+            for i in xrange(len(pdists)):
+                if i > len(test_sentences): break
+                print "%s : %.4f" % (test_sentences[i] ,pdists[i].prob("False"))
+                if pdists[i].prob("False") > 0.5:
+                    print "mark spam"
+                    t =  test_query[i]
+                    t.type = 5
+                    self.dbSession.add(t)
+            self.dbSession.commit()
+            j+=100
 
     def prob_classify(self, sentence):
         tmp_bows = []
@@ -139,22 +168,23 @@ class ShNaiveBayes(object):
         userdata = self.getAuthData("./config.json")
         self.dbSession = model.startSession(userdata)
     
+    """ 初回に呼び出す。学習して結果を書き出す """
     def main(self):
         self.init_session()
         self.learn()
         self.write_probdist()
         self.batch_test()
 
+    """ 2回目以降に呼び出す。すでにある学習データから分類を行う """
+    def main2(self):
+        self.init_session()
+    	s.read_probdist()
+    	s.batch_test()
 
 if __name__ == "__main__":
-
     s = ShNaiveBayes()
-
-    #s.main()
-    s.init_session()
-    #s.learn()
-    #s.write_probdist()
-    #s.classifier = None
-    s.read_probdist()
-    s.batch_test()
-    #print s.prob_classify(u"茨城県北部はライフラインがほぼ全滅。原発100キロ圏内にあります。救援物資も大変不足しておりますが報道も皆無に等しく茨城県が取り残されています。一刻も早い状況の把握と救援をお願いします。助けてください。")
+    if len(sys.argv) == 1:
+    	s.main2()
+    elif len(sys.argv) > 1:
+ 	s.read_probdist()
+        print s.prob_classify(sys.argv[1])

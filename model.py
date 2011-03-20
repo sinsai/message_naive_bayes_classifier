@@ -26,6 +26,7 @@ message = Table("message", metadata,
                 Column('message_type', types.SmallInteger(4)),
                 Column('message_date', types.DateTime),
                 Column('message_level',types.SmallInteger(4)),
+                Column('type', types.Integer(4)),
                 mysql_engine = 'InnoDB',
                 mysql_charset = 'utf8'
             )
