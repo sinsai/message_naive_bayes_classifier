@@ -104,15 +104,16 @@ class ShNaiveBayes(object):
         self.classifier = nltk.NaiveBayesClassifier.train(bows)
         print "end learn"
 
-    def batch_test(self):
+    """ bulk = True で検出のみ、パラメータ変更はしない """
+    def batch_test(self, bulk=False):
 
-        j = 65101
-        while j < 90000:
+        j = 100000
+        while j < 150000:
             test_bows = []
             tmp_bows = []
             #test_query = self.dbSession.query(model.Message).filter(\
             #    model.Message.message_type==1).slice(2000,5000)
-            test_query = self.dbSession.query(model.Message).slice(j,j+100)
+            test_query = self.dbSession.query(model.Message).filter(model.Message.type!=5).slice(j,j+100)
             test_sentences = self.append_bows(test_query, tmp_bows)
         
             test_bows = self.complete_bows(tmp_bows, test = True)
@@ -123,9 +124,10 @@ class ShNaiveBayes(object):
                 print "%s : %.4f" % (test_sentences[i] ,pdists[i].prob("False"))
                 if pdists[i].prob("False") > 0.5:
                     print "mark spam"
-                    t =  test_query[i]
-                    t.type = 5
-                    self.dbSession.add(t)
+                    if bulk == False:
+                        t =  test_query[i]
+                        t.type = 5
+                        self.dbSession.add(t)
             self.dbSession.commit()
             j+=100
 
@@ -173,7 +175,7 @@ class ShNaiveBayes(object):
         self.init_session()
         self.learn()
         self.write_probdist()
-        self.batch_test()
+        self.batch_test(bulk=True)
 
     """ 2回目以降に呼び出す。すでにある学習データから分類を行う """
     def main2(self):
