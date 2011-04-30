@@ -12,3 +12,6 @@ def call_bayes(text)
 end
 p call_bayes("RT: ほげ")
 
+# $ ruby call_bayes.rb 
+# "call bayesian filter"
+# "0.271413779317\n"
