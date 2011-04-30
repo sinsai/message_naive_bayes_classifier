@@ -93,11 +93,11 @@ class ShNaiveBayes(object):
         bows = []
         # まず正解データを読み込む
         correct_query = self.dbSession.query(model.Message).filter(\
-            model.Message.message_type!=3).limit(1000)
+            model.Message.type==0).limit(1000)
         self.append_bows(correct_query, tmp_bows,"True")
 
         wrong_query = self.dbSession.query(model.Message).filter(\
-            model.Message.message_type==3).limit(1000)
+            model.Message.type > 0).limit(1000)
         self.append_bows(wrong_query, tmp_bows,"False")
 
         bows = self.complete_bows(tmp_bows)
@@ -107,8 +107,8 @@ class ShNaiveBayes(object):
     """ bulk = True で検出のみ、パラメータ変更はしない """
     def batch_test(self, bulk=False):
 
-        j = 100000
-        while j < 150000:
+        j = 0
+        while j < 1000000:
             test_bows = []
             tmp_bows = []
             #test_query = self.dbSession.query(model.Message).filter(\
@@ -122,7 +122,7 @@ class ShNaiveBayes(object):
             for i in xrange(len(pdists)):
                 if i > len(test_sentences): break
                 print "%s : %.4f" % (test_sentences[i] ,pdists[i].prob("False"))
-                if pdists[i].prob("False") > 0.5:
+                if pdists[i].prob("False")-pdists[i].prob("True") > 0.2:
                     print "mark spam"
                     if bulk == False:
                         t =  test_query[i]
